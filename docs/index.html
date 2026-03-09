@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure DevOps Agent — Docker Multi-Arch</title>
+  <meta name="description" content="Self-hosted Azure DevOps agent in Docker. Alpine Linux, multi-architecture, auto-release.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #111827;
+      --bg-code: #0d1321;
+      --border: #1e293b;
+      --border-glow: #0ea5e9;
+      --text: #e2e8f0;
+      --text-dim: #64748b;
+      --accent: #38bdf8;
+      --accent-alt: #818cf8;
+      --green: #34d399;
+      --orange: #fb923c;
+      --pink: #f472b6;
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(10, 14, 23, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container { display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; color: var(--accent); letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--text-dim); }
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    .hero { padding: 180px 0 100px; text-align: center; position: relative; }
+    .hero-glow { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 600px; height: 400px; background: radial-gradient(ellipse, rgba(56, 189, 248, 0.08) 0%, transparent 70%); pointer-events: none; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px;
+      border: 1px solid var(--border); border-radius: 100px; font-family: var(--font-mono);
+      font-size: 0.75rem; color: var(--green); margin-bottom: 32px;
+      background: rgba(52, 211, 153, 0.05); animation: fadeInUp 0.6s ease both;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    h1 { font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 24px; animation: fadeInUp 0.6s ease 0.1s both; }
+    h1 .highlight { background: linear-gradient(135deg, var(--accent), var(--accent-alt)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: 1.15rem; color: var(--text-dim); max-width: 560px; margin: 0 auto 40px; font-weight: 300; animation: fadeInUp 0.6s ease 0.2s both; }
+    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; animation: fadeInUp 0.6s ease 0.3s both; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 10px; font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: all 0.25s; cursor: pointer; border: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-alt)); color: var(--bg); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(56, 189, 248, 0.25); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--text-dim); background: rgba(255, 255, 255, 0.03); }
+
+    .pull-section { padding: 0 0 80px; animation: fadeInUp 0.6s ease 0.4s both; }
+    .pull-box { max-width: 600px; margin: 0 auto; background: var(--bg-code); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .pull-box-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); }
+    .pull-box-dots { display: flex; gap: 6px; }
+    .pull-box-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .pull-box-dots span:nth-child(1) { background: #ef4444; }
+    .pull-box-dots span:nth-child(2) { background: #eab308; }
+    .pull-box-dots span:nth-child(3) { background: #22c55e; }
+    .pull-box code { display: block; padding: 20px; font-family: var(--font-mono); font-size: 0.9rem; color: var(--green); }
+    .pull-box code .prompt { color: var(--accent); }
+    .pull-box code .cmd { color: var(--text); }
+    .pull-box code .img { color: var(--orange); }
+    .copy-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer; transition: all 0.2s; }
+    .copy-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+    .features { padding: 80px 0; border-top: 1px solid var(--border); }
+    .section-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 16px; }
+    .section-title { font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 60px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+
+    .feature-card { padding: 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; transition: all 0.3s; position: relative; overflow: hidden; }
+    .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; transition: opacity 0.3s; }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-card:hover { border-color: rgba(56, 189, 248, 0.2); transform: translateY(-2px); }
+    .feature-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 20px; }
+    .feature-icon.blue { background: rgba(56, 189, 248, 0.1); }
+    .feature-icon.green { background: rgba(52, 211, 153, 0.1); }
+    .feature-icon.orange { background: rgba(251, 146, 60, 0.1); }
+    .feature-icon.pink { background: rgba(244, 114, 182, 0.1); }
+    .feature-icon.purple { background: rgba(129, 140, 248, 0.1); }
+    .feature-icon.white { background: rgba(226, 232, 240, 0.1); }
+    .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+    .feature-card p { color: var(--text-dim); font-size: 0.9rem; font-weight: 300; line-height: 1.7; }
+
+    .quickstart { padding: 80px 0; border-top: 1px solid var(--border); }
+    .steps { display: flex; flex-direction: column; gap: 32px; }
+    .step { display: grid; grid-template-columns: 48px 1fr; gap: 24px; align-items: start; }
+    .step-number { width: 48px; height: 48px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: var(--accent); flex-shrink: 0; }
+    .step-content h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .step-content p { color: var(--text-dim); font-size: 0.9rem; font-weight: 300; margin-bottom: 16px; }
+
+    .code-block { background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .code-block-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); }
+    .code-block pre { padding: 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+    .code-block pre .comment { color: var(--text-dim); }
+    .code-block pre .key { color: var(--accent); }
+    .code-block pre .val { color: var(--green); }
+    .code-block pre .str { color: var(--orange); }
+
+    .arch { padding: 80px 0; border-top: 1px solid var(--border); }
+    .arch-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .arch-table th { text-align: left; padding: 14px 20px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); }
+    .arch-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .arch-table tr:last-child td { border-bottom: none; }
+    .arch-table code { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); background: rgba(56, 189, 248, 0.08); padding: 3px 8px; border-radius: 4px; }
+    .arch-table .examples { color: var(--text-dim); font-weight: 300; }
+
+    .contributing { padding: 80px 0; border-top: 1px solid var(--border); }
+    .contrib-steps { display: flex; flex-direction: column; gap: 16px; }
+    .contrib-step { display: flex; align-items: baseline; gap: 16px; padding: 20px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; transition: border-color 0.2s; }
+    .contrib-step:hover { border-color: rgba(56, 189, 248, 0.2); }
+    .contrib-num { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 0.9rem; flex-shrink: 0; }
+    .contrib-text { color: var(--text-dim); font-size: 0.9rem; font-weight: 300; }
+    .contrib-text code { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); background: rgba(56, 189, 248, 0.08); padding: 2px 6px; border-radius: 4px; }
+
+    footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
+    .footer-links { display: flex; gap: 32px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+    .footer-links a { color: var(--text-dim); text-decoration: none; font-family: var(--font-mono); font-size: 0.8rem; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-copy { color: var(--text-dim); font-size: 0.8rem; font-weight: 300; }
+    .footer-copy a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+    .footer-copy a:hover { color: var(--text); }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal { opacity: 0; transform: translateY(30px); transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 768px) {
+      .hero { padding: 140px 0 60px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 1fr; }
+      .step-number { margin-bottom: -16px; }
+      .nav-links { gap: 16px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <nav>
+    <div class="container">
+      <div class="nav-logo">neytor<span>/azure-devops-agent</span></div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#quickstart">Quick start</a>
+        <a href="#arch">Architectures</a>
+        <a href="#support">Support</a>
+        <a href="https://github.com/YonierGomez/azure-devops-agents" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="container">
+        <div class="badge">Auto-release enabled</div>
+        <h1>Azure DevOps Agent<br><span class="highlight">on Docker</span></h1>
+        <p class="hero-sub">Self-hosted agent on Alpine Linux. Multi-architecture, lightweight and with automatic releases.</p>
+        <div class="hero-actions">
+          <a href="#quickstart" class="btn btn-primary">Quick start</a>
+          <a href="https://hub.docker.com/r/neytor/azure-devops-agent" class="btn btn-ghost" target="_blank" rel="noopener">Docker Hub →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="pull-section">
+      <div class="container">
+        <div class="pull-box">
+          <div class="pull-box-header">
+            <div class="pull-box-dots"><span></span><span></span><span></span></div>
+            <button class="copy-btn" onclick="copyPull()" id="copyBtn">copy</button>
+          </div>
+          <code><span class="prompt">$</span> <span class="cmd">docker pull</span> <span class="img">neytor/azure-devops-agent:latest</span></code>
+        </div>
+      </div>
+    </section>
+
+    <section class="features reveal" id="features">
+      <div class="container">
+        <div class="section-label">Features</div>
+        <h2 class="section-title">Everything you need</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon blue">🏔️</div>
+            <h3>Alpine Linux</h3>
+            <p>Ultra-lightweight base image (~5 MB). Smaller attack surface, fast startup.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon green">🔄</div>
+            <h3>Multi-architecture</h3>
+            <p>Native support for amd64 and arm64. Runs on servers, SBCs and Apple Silicon without changes.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon orange">📦</div>
+            <h3>Auto-release</h3>
+            <p>Detects new upstream agent versions and publishes automatically with changelog.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon pink">🐳</div>
+            <h3>Docker-in-Docker</h3>
+            <p>Docker socket mounted from the host. Your pipelines can build and push images.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon purple">⚡</div>
+            <h3>Scalable</h3>
+            <p>Spin up multiple agents with a single command using <code>--scale</code>.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon white">🔒</div>
+            <h3>Secure secrets</h3>
+            <p>Environment variables via <code>.env</code>. Nothing hardcoded in the image.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="quickstart reveal" id="quickstart">
+      <div class="container">
+        <div class="section-label">Quick start</div>
+        <h2 class="section-title">Up and running in 3 steps</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h3>Create the environment file</h3>
+              <p>You need your organization URL and a PAT with Agent Pools permissions.</p>
+              <div class="code-block">
+                <div class="code-block-header"><span>.env</span></div>
+<pre>
+<span class="key">AZP_URL</span>=<span class="str">https://dev.azure.com/YOUR_ORG</span>
+<span class="key">AZP_TOKEN</span>=<span class="str">YOUR_PAT</span>
+<span class="key">AZP_POOL</span>=<span class="str">Default</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h3>Create the compose.yaml</h3>
+              <div class="code-block">
+                <div class="code-block-header"><span>compose.yaml</span></div>
+<pre>
+<span class="key">name</span>: <span class="val">work_agent</span>
+
+<span class="key">services</span>:
+  <span class="key">azure-agent</span>:
+    <span class="key">image</span>: <span class="str">neytor/azure-devops-agent:latest</span>
+    <span class="key">restart</span>: <span class="val">unless-stopped</span>
+    <span class="key">env_file</span>:
+      - <span class="str">.env</span>
+    <span class="key">volumes</span>:
+      - <span class="str">/var/run/docker.sock:/var/run/docker.sock</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h3>Start the agent</h3>
+              <div class="code-block">
+                <div class="code-block-header"><span>terminal</span></div>
+<pre>
+<span class="comment"># Single agent</span>
+$ docker compose up -d
+
+<span class="comment"># Three agents in parallel</span>
+$ docker compose up -d --scale azure-agent=3
+
+<span class="comment"># View logs</span>
+$ docker compose logs -f
+
+<span class="comment"># Stop</span>
+$ docker compose down</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="arch reveal" id="arch">
+      <div class="container">
+        <div class="section-label">Platforms</div>
+        <h2 class="section-title">Supported architectures</h2>
+        <div class="code-block">
+          <table class="arch-table">
+            <thead>
+              <tr>
+                <th>Arch</th>
+                <th>Platform</th>
+                <th>Examples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>x86_64</td>
+                <td><code>linux/amd64</code></td>
+                <td class="examples">Servers, PCs, VMs</td>
+              </tr>
+              <tr>
+                <td>ARM64</td>
+                <td><code>linux/arm64</code></td>
+                <td class="examples">SBCs, Apple Silicon, AWS Graviton</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="contributing reveal" id="support">
+      <div class="container">
+        <div class="section-label">Support</div>
+        <h2 class="section-title">Like this project?</h2>
+        <div class="contrib-steps">
+          <a href="https://buymeacoffee.com/yoniergomez" target="_blank" rel="noopener" class="contrib-step" style="text-decoration:none;cursor:pointer;">
+            <span class="contrib-num">☕</span>
+            <span class="contrib-text">Buy me a coffee on <code>buymeacoffee.com/yoniergomez</code></span>
+          </a>
+          <a href="https://github.com/sponsors/YonierGomez" target="_blank" rel="noopener" class="contrib-step" style="text-decoration:none;cursor:pointer;">
+            <span class="contrib-num" style="color:var(--pink);">❤️</span>
+            <span class="contrib-text">Sponsor me on <code>GitHub Sponsors</code></span>
+          </a>
+          <a href="https://github.com/YonierGomez/azure-devops-agents" target="_blank" rel="noopener" class="contrib-step" style="text-decoration:none;cursor:pointer;"></a>
+            <span class="contrib-num" style="color:var(--orange);">⭐</span>
+            <span class="contrib-text">Star the repo on GitHub — it helps a lot</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://hub.docker.com/r/neytor/azure-devops-agent" target="_blank" rel="noopener">Docker Hub</a>
+        <a href="https://github.com/YonierGomez/azure-devops-agents" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/YonierGomez/azure-devops-agents/releases" target="_blank" rel="noopener">Releases</a>
+      </div>
+      <p class="footer-copy">Made by <a href="https://yonier.com" target="_blank" rel="noopener">Yonier Gomez</a> · <a href="https://github.com/YonierGomez" target="_blank" rel="noopener">GitHub</a></p>
+    </div>
+  </footer>
+
+  <script>
+    function copyPull() {
+      navigator.clipboard.writeText('docker pull neytor/azure-devops-agent:latest');
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ copied';
+      setTimeout(() => btn.textContent = 'copy', 2000);
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
