@@ -1,5 +1,15 @@
 # Azure DevOps Self-Hosted Agent (Docker)
 
+[![GitHub release](https://img.shields.io/github/v/release/YonierGomez/azure-devops-agents?style=flat-square&logo=github)](https://github.com/YonierGomez/azure-devops-agents/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/neytor/azure-devops-agent?style=flat-square&logo=docker)](https://hub.docker.com/r/neytor/azure-devops-agent)
+[![Docker Image Size](https://img.shields.io/docker/image-size/neytor/azure-devops-agent/latest?style=flat-square&logo=docker)](https://hub.docker.com/r/neytor/azure-devops-agent)
+[![Alpine](https://img.shields.io/badge/Alpine-Linux-0D597F?style=flat-square&logo=alpine-linux&logoColor=white)](https://alpinelinux.org)
+[![amd64](https://img.shields.io/badge/linux-amd64-blue?style=flat-square&logo=linux)](https://hub.docker.com/r/neytor/azure-devops-agent)
+[![arm64](https://img.shields.io/badge/linux-arm64-blue?style=flat-square&logo=linux)](https://hub.docker.com/r/neytor/azure-devops-agent)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-yellow?style=flat-square&logo=buy-me-a-coffee)](https://buymeacoffee.com/yoniergomez)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-❤️-ea4aaa?style=flat-square&logo=github-sponsors)](https://github.com/sponsors/YonierGomez)
+
 Self-hosted Azure DevOps agent running in a Docker container based on Alpine Linux with multi-architecture support.
 
 ## Requirements
@@ -138,3 +148,7 @@ Repository: [github.com/YonierGomez/azure-devops-agents](https://github.com/Yoni
 ## Author
 
 Made by [Yonier Gomez](https://yonier.com) · [GitHub](https://github.com/YonierGomez)
+
+## License
+
+[MIT](LICENSE)
