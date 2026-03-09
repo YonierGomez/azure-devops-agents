@@ -41,9 +41,9 @@ AGENT_URL="https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agen
 
 echo "Downloading Azure DevOps agent v${AGENT_VERSION} (${AGENT_ARCH})..."
 
-curl -L --retry 5 --fail "$AGENT_URL" -o agent.tar.gz
+curl -L --retry 5 --fail --silent --show-error "$AGENT_URL" -o agent.tar.gz
 
-tar zxvf agent.tar.gz
+tar zxf agent.tar.gz
 rm agent.tar.gz
 
 echo "Configuring agent..."
