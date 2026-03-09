@@ -1,62 +1,140 @@
 # Azure DevOps Self-Hosted Agent (Docker)
 
-Agente self-hosted de Azure DevOps ejecutado en un contenedor Docker basado en Alpine Linux (ARM64).
+Self-hosted Azure DevOps agent running in a Docker container based on Alpine Linux with multi-architecture support.
 
-## Requisitos
+## Requirements
 
-- Docker y Docker Compose
-- Un token de acceso personal (PAT) de Azure DevOps con permisos de **Agent Pools (Read & Manage)**
-- Acceso a una organización de Azure DevOps
+- Docker and Docker Compose
+- An Azure DevOps Personal Access Token (PAT) with **Agent Pools (Read & Manage)** permissions
 
-## Configuración
+## Getting started
 
-1. Copia el archivo de ejemplo de variables de entorno:
-
-   ```bash
-   cp .env-example .env
-   ```
-
-2. Edita `.env` con tus valores:
-
-   | Variable    | Descripción                                      | Valor por defecto |
-   |-------------|--------------------------------------------------|-------------------|
-   | `AZP_URL`   | URL de tu organización (`https://dev.azure.com/TU_ORG`) | —                 |
-   | `AZP_TOKEN` | Personal Access Token (PAT)                      | —                 |
-   | `AZP_POOL`  | Nombre del Agent Pool                            | `Default`         |
-
-## Uso
-
-Inicia el agente:
+### 1. Create the environment file
 
 ```bash
-docker compose up -d --build
+cat > .env <<EOF
+AZP_URL=https://dev.azure.com/YOUR_ORG
+AZP_TOKEN=YOUR_PAT
+AZP_POOL=Default
+EOF
 ```
 
-Revisa los logs:
+| Variable    | Required | Description                                             | Default   |
+|-------------|----------|---------------------------------------------------------|-----------|
+| `AZP_URL`   | Yes      | Your organization URL (`https://dev.azure.com/YOUR_ORG`)| —         |
+| `AZP_TOKEN` | Yes      | Personal Access Token (PAT)                             | —         |
+| `AZP_POOL`  | No       | Agent Pool name                                         | `Default` |
+
+### 2. Create the `compose.yaml`
+
+```yaml
+name: work_agent
+
+services:
+  azure-agent:
+    image: neytor/azure-devops-agent:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+### 3. Start the agent
+
+```bash
+docker compose up -d
+```
+
+### 4. Verify it's running
 
 ```bash
 docker compose logs -f
 ```
 
-Detén el agente:
+You should see `Starting agent...` followed by a successful connection to the Azure DevOps pool.
+
+### Scale to multiple agents
 
 ```bash
+# Spin up 3 agents in parallel
+docker compose up -d --scale azure-agent=3
+```
+
+Each container registers with a unique name (its hostname) in the Azure DevOps pool.
+
+### Useful commands
+
+```bash
+# Restart agents
+docker compose restart
+
+# Stop without removing
+docker compose stop
+
+# Stop and remove
 docker compose down
+
+# Rebuild image and start
+docker compose up -d --build
+
+# Check container status
+docker compose ps
 ```
 
-## Arquitectura
+## Using docker run
 
-- **Base image:** Alpine Linux (ligera, ~5 MB)
-- **Plataforma:** `linux/arm64` (musl)
-- **Docker-in-Docker:** El socket de Docker del host se monta en el contenedor (`/var/run/docker.sock`), lo que permite al agente ejecutar comandos Docker desde los pipelines.
-- **Restart policy:** `unless-stopped` — el contenedor se reinicia automáticamente salvo que se detenga manualmente.
+If you prefer not to use Docker Compose:
 
-## Estructura del proyecto
-
+```bash
+docker run -d \
+  --name azure-agent \
+  --restart unless-stopped \
+  -e AZP_URL=https://dev.azure.com/YOUR_ORG \
+  -e AZP_TOKEN=YOUR_PAT \
+  -e AZP_POOL=Default \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  neytor/azure-devops-agent:latest
 ```
-.
-├── .env-example   # Variables de entorno de ejemplo
-├── compose.yaml   # Docker Compose
-├── dockerfile     # Imagen del agente
-└── start.sh       # Script de inicio: descarga, configura y ejecuta el agente
+
+View logs:
+
+```bash
+docker logs -f azure-agent
 ```
+
+Stop and remove:
+
+```bash
+docker stop azure-agent && docker rm azure-agent
+```
+
+## Supported architectures
+
+| Arch   | Platform       | Examples                                    |
+|--------|----------------|---------------------------------------------|
+| x86_64 | `linux/amd64`  | Servers, PCs, VMs                           |
+| ARM64  | `linux/arm64`  | SBCs (Raspberry Pi, Orange Pi, etc.), Apple Silicon, AWS Graviton |
+
+## Support
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-yellow?style=flat-square&logo=buy-me-a-coffee)](https://buymeacoffee.com/yoniergomez)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-❤️-ea4aaa?style=flat-square&logo=github-sponsors)](https://github.com/sponsors/YonierGomez)
+
+## Docker Hub
+
+```bash
+docker pull neytor/azure-devops-agent:latest
+```
+
+Repository: [hub.docker.com/r/neytor/azure-devops-agent](https://hub.docker.com/r/neytor/azure-devops-agent)
+
+## GitHub
+
+Automatic releases with upstream changelog whenever Microsoft publishes a new agent version.
+
+Repository: [github.com/YonierGomez/azure-devops-agents](https://github.com/YonierGomez/azure-devops-agents)
+
+## Author
+
+Made by [Yonier Gomez](https://yonier.com) · [GitHub](https://github.com/YonierGomez)
